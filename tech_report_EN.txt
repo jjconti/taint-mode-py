@@ -1,0 +1,283 @@
+Tech report about dyntaint.py
+=================================
+
+KEYS
+----
+
+KEYS is a list of ints. Each int represents a kind of stain or vulnerability.
+
+.. code-block:: python
+   
+    KEYS  = [XSS, SQLI, OSI, II] = range(4)
+
+TAINTED
+-------
+
+TAINTED is a dict each key is an int from the KEYS list and each value is a set.
+The objects in each set are meant to be tainted with the corresponding vulnerability.
+
+The TAINTED[XSS] set contains all the objects tainted with XSS at some point
+of the program.
+
+untrusted
+---------
+
+untrusted is a decorator used to tell that the values returned by a a function
+or method aren't trusted. Untrusted values can be tainted with any vulnerability,
+so they are marked as tainted with all the kinds of stain.
+
+If you have access to the function or method definition, for example if it's part
+of your code-base the decorator can be applied using Python's syntactic sugar:
+
+.. code-block:: python
+
+    @untrusted
+    def from_the_outside():
+        ...
+   
+While using third-party modules, we still can apply the decorator. The next
+example is from a program writed using the web.py framework:
+
+.. code-block:: python
+
+    import web
+    web.input = untrusted(web.input)
+
+See Untrusted values.
+
+cleaner
+-------
+
+cleaner is a decorator used to tell that a method or function is able to clean
+stains on a value.
+
+For example, the plain_text function removes HTML code from its input and returns
+the new clean value:
+
+.. code-block:: python
+
+    >>> plain_text("This is <b>bold</b>")
+    'This is bold'
+
+    >>> plain_text("Click <a href="http://www.google.com">here</a>")
+    'Click here'
+
+This kind of functions are associated with a determined kind of vulnerability;
+so the right way of using the cleaner decorator is specifying the kind of stain.
+Again, there are two was of doing it. In the definition:
+
+.. code-block:: python
+
+    @cleaner(XSS)
+    def plain_text(input):
+        ...
+
+or before start using it in our program:
+
+.. code-block:: python
+
+    plain_text = cleaner(XSS)(plain_text)
+
+ssink
+------
+
+The ssink decorator must be used the mark those functions or methods that we
+don't want to me reached for tainted values. We call them sensitive sinks.
+
+These sinks are sensitive to a kind of vulnerability, and must be specified when
+the decorator is used.
+
+For example, the Python eval function is a sensitive sink to Interpreter
+Injection attacks. The way we mark it as that is:
+
+.. code-block:: python
+
+    eval = ssink(II)(eval)
+
+The web.py framework offers SQL Injection sensitive sink examples:
+
+.. code-block:: python
+
+    import web
+    db = web.database(dbn="sqlite", db=DB_NAME)
+    db.delete = ssink(SQLI)(db.delete)
+    db.select = ssink(SQLI)(db.select)
+    db.insert = ssink(SQLI)(db.insert)
+
+Like the rest of decorators, if the sensitive sink is defined in our code, we can
+use syntactic sugar:
+
+.. code-block:: python
+
+    @ssink(XSS):
+    def render_answer(input):
+        ...
+
+The decorator can also be used without specifying a vulnerability. In this case,
+the sink is marked as sensitive to every kind of vulnerability, although this is not
+a very common use case:
+
+.. code-block:: python
+
+    @ssink():
+    def very_sensitive(input):
+        ...
+
+When an X tainted value reaches an X sensitive sink, we are in face of the existence
+of a vulnerability and an appropriated mechanism is executed (see the reached section).
+
+Not only functions or methods
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+With ssink we can mark not only functions or methods as sensitive sinks,
+but every callable; any object that implements the __call__ method. For example,
+in a program writed using the web.py framework we can do:
+
+.. code-block:: python
+
+    import web
+    web.redirect = ssink()(web.redirect)
+
+This is very similar to previous examples, but we must highlight that redirect
+is not a function or method, but a class (Redirect). The semantic reminds the same,
+if we instance (call) the class with a tainted value, appropriated mechanism is executed
+(see the reached section).
+
+The next example shows how a class can be marked:
+
+.. code-block:: python
+
+    from dyntaint import *
+
+    class Do(object):
+       
+        def __init__(self, a, b):
+            self.a = a
+            self.b = b
+           
+    d1 = Do('not tainted')
+    m = tainted('tainted')
+    d2 = Do(m)
+    Do = ssink()(Do)
+    d3 = Do('not tainted')
+    d4 = Do(m)
+
+The result of running the previous example is::
+
+
+    juanjo@fenix:~/python/dyntaint/experimentos/ssink_class$ python ejemplo.py
+    ===============================================================================
+    Violation on line 14 from the ejemplo.py file
+    Tinted value: tainted
+    -------------------------------------------------------------------------------
+        d2 = Do(m, 2)
+        Do = ssink()(Do)
+        d3 = Do('no manchado', 1)
+    --> d4 = Do(m, 2)
+       
+
+    ===============================================================================
+
+reached
+-------
+
+The ssink decorator has an optional argument called reached. When a sink
+sensitive with X is called with an argument tainted with X, a sutable
+mechanism is activated.
+
+If the module-level variable ENDS is set to True, then the sink is not
+executed and the reached function is executed instead. If ENDS is set to False,
+the reached function is executed but the program continues its flow.
+
+The provided de facto implementation alerts that the violation happened and
+information to find the error.
+
+unstrusted_args
+---------------
+
+Some frameworks works as follow: they ask the programmer to write certain
+function or method in such a way that then the framework itself use it to
+pass to the program values received from the outside. Twisted, the framework
+for building network applications, gives us an accurate example when you
+extend the LineOnlyReceiver class:
+
+.. code-block:: python
+
+    class MyProtocol(LineOnlyReceiver):
+
+        def lineReceived(self, line):
+            self.doSomething(line)  # line is a tainted value
+
+It's complicated or even impossible use the untrusted decorator in this kind
+of situations. Instead of it, you should use the untrusted_args decorator,
+which receives as an optional argument a list of non-trusted arguments positions
+and a list of keywords. The line parameter in the example can be marked as
+untrusted in this way:
+
+.. code-block:: python
+
+    class MyProtocol(LineOnlyReceiver):
+
+        @untrusted_args([1])
+        def lineReceived(self, line):
+            self.doSomething(line)
+
+Untrusted values
+----------------
+
+An untrusted value is such returned by a function or method marked as
+@untrusted or such received as parameters in a function or method marked
+as @untrusted_args.
+
+To determine which values are added to the sets in TAINTED, that is, which
+values are tainted, the next rule is applied:
+
+1) If the untrusted value is an string, it's used to instantiate the STR class,
+this object is saved in TAINTED.
+2) If the value is a list. This algorithm is applied to every element in the
+list and a new list with the results is returned.
+3) If the value is a dict. This algorithm is applied to every value in the dict
+and a new dict is returned, with the original keys and the new values.
+
+Let's see some examples using @untrusted:
+
+.. code-block:: python
+
+    >>> @untrusted
+    ... def ej1():
+    ...     return "aString"
+    ...
+    >>> ej1()
+    'aString'
+    >>> type(ej1())
+    <class 'dyntaint.STR'>
+    >>> @untrusted
+    ... def ej2():
+    ...     return ["string1", "string2"]
+    ...
+    >>> e2 = ej2()
+    >>> e2
+    ['string1', 'string2']
+    >>> type(e2[0])
+    <class 'dyntaint.STR'>
+    >>> type(e2[1])
+    <class 'dyntaint.STR'>
+    >>> @untrusted
+    ... def ej3():
+    ...     return {1: "one", 2: "two"}
+    ...
+    >>> e3 = ej3()
+    >>> e3
+    {1: 'one', 2: 'two'}
+    >>> type(e3[1])
+    <class 'dyntaint.STR'>
+    >>> type(e3[2])
+    <class 'dyntaint.STR'>
+    >>> TAINTED[0]
+    set(['two', 'aString', 'one', 'string2', 'string1'])
+    >>> tainted(e3[2])
+    True
+    >>> tainted(e2[1])
+    True
+    >>>
+

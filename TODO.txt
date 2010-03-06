@@ -1,0 +1,26 @@
+mancha1 + mancha2 --> el resultado debe tener las dos manchas
+Creo que ya esta...
+==================================================
+Qué hacemos con Unicode?
+==================================================
+tests para @validator
+
+    lineas = inspect.findsource(frame)[0]   # cambiar a getsourceline cuando el parche de gg este incorporado
+    
+    en taint_class
+    
+        tklass.__name__ = klass.__name__.upper()
+    
+paper
+
+las dos lineas que podemos desprender son: tech report, casos de estudio    
+
+
+
+
+
+
+
+Hace algo estatico? 
+
+http://docs.python.org/dev/library/language.html

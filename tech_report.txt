@@ -1,0 +1,293 @@
+Reporte técnico sobre dyntaint.py
+=================================
+
+KEYS
+----
+
+KEYS es una lista de enteros. Cada entero representa un tipo de mancha o
+vulnerabilidad.
+
+.. code-block:: python
+    
+    KEYS  = [XSS, SQLI, OSI, II] = range(4)
+
+TAINTED
+-------
+
+TAINTED es un diccionario (dict) en donde para cada par (clave, valor), clave
+es un entero perteneciente a KEYS y valor es un conjunto (set). Los objetos que
+se encuentran en el conjunto asociado a un tipo de vulnerabilidad, se
+consideran manchados con la misma.
+
+El conjunto TAINTED[XSS] contienen todos los objetos que en un momento dado
+del programa están manchados para XSS.
+
+untrusted
+---------
+
+untrusted es un decorador utilizado para indicar que los valores retornados por
+una función o método no son confiables. Como los valores no confiables pueden
+contener potencialmente cualquier tipo de mancha, estos valores son marcados
+como manchados por todos los tipos de machas.
+
+Si se tiene accedo a la definición de la función o método, por ejemplo si es
+parte de nuestro código, el decorador puede aplicarse mediante azúcar
+sintáctica:
+
+.. code-block:: python
+
+    @untrusted
+    def desde_el_exterior():
+        ...
+    
+Al usar módulos de terceros, podemos aplicar de todas formas el decorador. El
+siguiente ejemplo es de un programa que utiliza el framework web.py:
+
+.. code-block:: python
+
+    import web
+    web.input = untrusted(web.input)
+
+Ver Valores no confiables.
+
+cleaner
+-------
+
+cleaner es un decorador utilizado para indicar que un método o función tiene la
+habilidad de limpiar manchas en un valor.
+
+Por ejemplo, la función texto_plano remueve código HTML de su entrada y retorna
+un nuevo valor limpio:
+
+.. code-block:: python
+
+    >>> texto_plano("Esto es <b>negrita</b>")
+    'Esto es negrita'
+
+    >>> texto_plano("Click <a href="http://www.google.com">here</a>")
+    'Click here'
+
+Este tipo de funciones están asociadas a un tipo de vulnerabilidad; por lo
+tanto la forma de utilizar el decorador cleaner es especificando un tipo de
+mancha. Nuevamente hay dos formas de hacerlo. En la definición:
+
+.. code-block:: python
+
+    @cleaner(XSS)
+    def texto_plano(input):
+        ...
+
+o antes de empezar a utilizar la función en nuestro programa:
+
+.. code-block:: python
+
+    texto_plano = cleaner(XSS)(texto_plano)
+
+ssink
+------
+
+El decorador ssink debe utilizarse para marcar aquellas funciones o métodos que 
+no queremos sean alcanzadas por valores manchados. Los llamamos sumideros
+sensibles o sensitive sinks.
+
+Estos sumideros son sensibles a un tipo de vulnerabilidad, y debe
+especificarse cuando se utiliza el decorador.
+
+Por ejemplo, la función eval de Python es un sumidero sensible a ataques de
+Interpreter Injection. La forma de marcarlo como tal es:
+
+.. code-block:: python
+
+    eval = ssink(II)(eval)
+
+El framework web.py nos provee ejemplos de sumideros sensibles a ataques de SQL
+injection:
+
+.. code-block:: python
+
+    import web
+    db = web.database(dbn="sqlite", db=DB_NAME)
+    db.delete = ssink(SQLI)(db.delete)
+    db.select = ssink(SQLI)(db.select)
+    db.insert = ssink(SQLI)(db.insert)
+
+Cómo con los otros decoradores, si el sumidero sensible es definido en nuestro
+código, podemos utilizar azúcar sintánctica:
+
+.. code-block:: python
+
+    @ssink(XSS):
+    def generar_respuesta(input):
+        ...
+
+El decorador también puede utilizarse sin especificar ninguna vulnerabilidad.
+En este caso, el sumidero es marcado como sensible a todos los tipos de
+vulnerabilidad, aunque este no es un caso de uso muy usado:
+
+.. code-block:: python
+
+    @ssink():
+    def muy_sensible(input):
+        ...
+
+Cuando un valor manchado alcanza un sumidero sensible, estamos ante la
+existencia de una vulnerabilidad y un mecanismo apropiado es ejecutado (ver
+la sección reached).
+
+No solo funciones o métodos
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ssink permite no solo marcar funciones o métodos como sumideros sensibles,
+sino cualquier llamable (callable); es decir cualquier objeto que implemente
+el método __call__. Por ejemplo, dentro de un programa escrito utilizando
+el framework web.py podemos hacer:
+
+.. code-block:: python
+
+    import web
+    web.redirect = ssink()(web.redirect)
+
+Esto es muy similar a los ejemplos anteriores, pero hay que resaltar que
+redirect no es una función o méotodo, sino que es una clase (Redirect). La
+semántica es la misma, si la clase se instancia (llama) con un valor manchado,
+un mecanismo apropiado es ejecutado (ver la sección reached).
+
+El siguiente ejemplo muestra la forma en que se puede marcar una clase:
+
+.. code-block:: python
+
+    from dyntaint import *
+
+    class Do(object):
+        
+        def __init__(self, a, b):
+            self.a = a
+            self.b = b
+            
+    d1 = Do('no manchado')
+    m = tainted('manchado')
+    d2 = Do(m)
+    Do = ssink()(Do)
+    d3 = Do('no manchado')
+    d4 = Do(m)
+
+El resultado de correr el anterior programa es::
+
+
+    juanjo@fenix:~/python/dyntaint/experimentos/ssink_class$ python ejemplo.py 
+    ===============================================================================
+    Violacion en la linea 14 del archivo ejemplo.py
+    Valor manchado: manchado
+    -------------------------------------------------------------------------------
+        d2 = Do(m, 2)
+        Do = ssink()(Do)
+        d3 = Do('no manchado', 1)
+    --> d4 = Do(m, 2)
+        
+
+    ===============================================================================
+
+reached
+-------
+
+El decorador ssink tiene un argumento opcional llamado reached. Cuando el
+sumidero es llamado con un argumento manchado con la vulnerabilidad a la que
+este es sensible, se activa un mecanismo apropiado.
+
+Si la variable de módulo ENDS es True, entonces el sumidero no es ejecutado y
+en su lugar se ejecuta la función reached. Si ENDS es False, la función reached
+es ejecutada, pero se continúa con la ejecución del programa.
+
+Se provee una implementación por defecto que alerta de la violación ocurrida
+y da información para encontrar el error.
+
+
+unstrusted_args
+---------------
+
+Algunos frameworks funcionan de la siguiente forma: le piden al programador que 
+escriba cierta función o método de forma tal que luego el framework las utiliza
+para pasarle al programa de usuario los valores recibidos desde el exterior.
+Twisted, el framework para hacer aplicaciones de red, provee un claro ejemplo
+cuando se extiende la clase LineOnlyReceiver:
+
+.. code-block:: python
+
+    class MyProtocol(LineOnlyReceiver):
+
+        def lineReceived(self, line):
+            self.doSomething(line)  # line es un valor manchado
+
+En estos casos, utilizar el decorador untrusted es engorroso o incluso
+imposible. En su lugar se debe utilizar el decorador untrusted_args, que recibe
+como argumento (opcionalmente) una lista de posiciones de argumentos no
+confiables y una lista de argumentos de palabra clave. El parámetro line del
+ejempo anterior puede marcarse como no confiable así:
+
+.. code-block:: python
+
+    class MyProtocol(LineOnlyReceiver):
+
+        @untrusted_args([1])
+        def lineReceived(self, line):
+            self.doSomething(line)
+
+Valores no confiables
+---------------------
+
+Un valor no confiable es aquen devuelto por una función o método marcada con
+@untrusted o aquel/aquellos recibidos como parámetros en una función o método
+marcada con @untrusted_args.
+
+Para determinar que valores son agregados a los conjuntos TAINTED, es decir,
+qué valores son marchados, se aplica la siguiente regla:
+
+1) Si el valor no confiable es un string, se utiliza para crear una instancia
+de STR, este objeto es guardado en TAINTED.
+2) Si el valor es una lista. Se apica este algoritmo a todos los elementos de
+la lista y se retorna una nueva lista con el resultado de cada aplicación.
+3) Si el valor es un diccionario. Se aplica este algoritmo a todos los valores
+del diccionario y se retorna un nuevo diccionario con las claves originales y
+los resultados de cada aplicaicón como valores.
+
+Veamos unos ejemplos utilizando @untrusted:
+
+.. code-block:: python
+
+    >>> @untrusted
+    ... def ej1():
+    ...     return "unString"
+    ...
+    >>> ej1()
+    'unString'
+    >>> type(ej1())
+    <class 'dyntaint.STR'>
+    >>> @untrusted
+    ... def ej2():
+    ...     return ["string1", "string2"]
+    ...
+    >>> e2 = ej2()
+    >>> e2
+    ['string1', 'string2']
+    >>> type(e2[0])
+    <class 'dyntaint.STR'>
+    >>> type(e2[1])
+    <class 'dyntaint.STR'>
+    >>> @untrusted
+    ... def ej3():
+    ...     return {1: "uno", 2: "dos"}
+    ...
+    >>> e3 = ej3()
+    >>> e3
+    {1: 'uno', 2: 'dos'}
+    >>> type(e3[1])
+    <class 'dyntaint.STR'>
+    >>> type(e3[2])
+    <class 'dyntaint.STR'>
+    >>> TAINTED[0]
+    set(['dos', 'unString', 'uno', 'string2', 'string1'])
+    >>> tainted(e3[2])
+    True
+    >>> tainted(e2[1])
+    True
+    >>>
