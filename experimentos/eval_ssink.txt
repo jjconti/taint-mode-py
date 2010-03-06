@@ -1,0 +1,11 @@
+>>> a = 1
+>>> a = '1'
+>>> b = '2'
+>>> def suma(x,y):
+...     return eval(x + ' + ' + y)
+... 
+>>> suma(a,b)
+3
+>>> suma('"interesante:" ', 'open("/etc/passwd").read()')
+'interesante:root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/bin/sh\nbin:x:2:2:bin:/bin:/bin/sh\nsys:x:3:3:sys:/dev:/bin/sh\nsync:x:4:65534:sync:/bin:/bin/sync\ngames:x:5:60:games:/usr/games:/bin/sh\nman:x:6:12:man:/var/cache/man:/bin/sh\nlp:x:7:7:lp:/var/spool/lpd:/bin/sh\nmail:x:8:8:mail:/var/mail:/bin/sh\nnews:x:9:9:news:/var/spool/news:/bin/sh\nuucp:x:10:10:uucp:/var/spool/uucp:/bin/sh\nproxy:x:13:13:proxy:/bin:/bin/sh\nwww-data:x:33:33:www-data:/var/www:/bin/sh\nbackup:x:34:34:backup:/var/backups:/bin/sh\nlist:x:38:38:Mailing List Manager:/var/list:/bin/sh\nirc:x:39:39:ircd:/var/run/ircd:/bin/sh\ngnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/bin/sh\nnobody:x:65534:65534:nobody:/nonexistent:/bin/sh\nlibuuid:x:100:101::/var/lib/libuuid:/bin/sh\nsyslog:x:101:102::/home/syslog:/bin/false\nklog:x:102:103::/home/klog:/bin/false\nhplip:x:103:7:HPLIP system user,,,:/var/run/hplip:/bin/false\navahi-autoipd:x:104:112:Avahi autoip daemon,,,:/var/lib/avahi-autoipd:/bin/false\ngdm:x:105:113:Gnome Display Manager:/var/lib/gdm:/bin/false\npulse:x:106:115:PulseAudio daemon,,,:/var/run/pulse:/bin/false\nsaned:x:107:118::/home/saned:/bin/false\nmessagebus:x:108:119::/var/run/dbus:/bin/false\npolkituser:x:109:120:PolicyKit,,,:/var/run/PolicyKit:/bin/false\navahi:x:110:121:Avahi mDNS daemon,,,:/var/run/avahi-daemon:/bin/false\nhaldaemon:x:111:122:Hardware abstraction layer,,,:/var/run/hald:/bin/false\njuanjo:x:1000:1000:Juan Jos\xc3\xa9 Conti,,,:/home/juanjo:/bin/bash\nDebian-exim:x:112:125::/var/spool/exim4:/bin/false\nsmokeping:x:113:126:SmokePing daemon,,,:/var/lib/smokeping:/bin/false\nmysql:x:114:128:MySQL Server,,,:/var/lib/mysql:/bin/false\nchipcard:x:115:129:Chipcard-Tools Daemon Account,,,:/var/run/chipcard:/bin/false\n'
+

@@ -1,0 +1,44 @@
+Experimento sobre la aplicación Pelis de Manuel Quiñones.
+
+1) Detección de vulnerabilidad mediante detección.
+
+Guardando una copia de la página web inicial y editando su código HTML:
+
+<input name="peli_id" value="0 or 1=1" type="radio">
+  
+se puede conseguir mediante la selección de una película en particular de la lista
+y oprmiendo el botón "¡vista!" borrar todas las películas de la base de datos.
+  
+ El código fuente que se ejecuta es (de pelis.py):
+    
+class remove:
+    def POST(self):
+        peli_id = web.input().peli_id
+        db.delete('pelis', where="id=%s" % peli_id)
+        raise web.seeother('/')
+        
+2) Detección de la vulnerabilidad mediante la modificación del código fuente
+
+Se importa dyntaint. Se añaden marcas a fuentes inseguras y sumideros sensibles.
+
+# Taint mode
+from dyntaint import *
+
+import web
+# Taint mode
+web.input = untrusted(web.input)
+
+db = web.database(dbn="sqlite", db=DB_NAME)
+# Taint mode
+db.delete = ssink(v=SQLI)(db.delete)
+
+Al usar la aplicación funcinó normalmente,
+
+        db.delete('pelis', where="id=%s" % peli_id)
+        
+no levantó ninguna alarma. El problema era que si bien dict[k] era convertido a STR
+y guardado en TAINTED, no se cambiaba el tipo al objeto guardado en el diccioanario.
+Entonces cuando se obtenia el valor no era de tipo STR y la mancha no se propagaba
+en el formateo de string!! BUGFIX en la rev 29.
+
+

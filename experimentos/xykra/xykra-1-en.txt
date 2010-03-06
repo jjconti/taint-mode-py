@@ -1,0 +1,56 @@
+I used a module I am developing, it's called dyntaint: http://svn.juanjoconti.com.ar/dyntaint/dyntaint.py
+
+I used this source code: http://xykra.org/static/download/xykra-1.0.tar.gz
+
+I needed to add some marks to your code, I used some decorators from the module:
+
+from dyntaint import *
+web.input = untrusted(web.input)
+web.redirect = ssink()(web.redirect)
+
+and also:
+
+@ssink(XSS)
+def skeleton (title, file, body):
+
+@untrusted_args([1])
+def GET(self, name):
+
+Then I just run your app and started to use it, I founded:
+
+1) XSS at the visited url:
+
+http://0.0.0.0:8080/edit/%3Cscript%3Ealert(%22hola%22)%3C/script%3EA
+
+===============================================================================
+Violacion en la linea 139 del archivo /home/juanjo/python/webpy/xykra/web/xykra.py
+Valor manchado: editing <script>alert("hola")</script>A
+-------------------------------------------------------------------------------
+            if os.path.exists (f) and os.path.isfile (f):
+                wiki = open (f).read()
+            doc = self.form(name, wiki)
+-->         return skeleton ('editing ' + name, name, doc)
+    
+        @untrusted_args([1])
+
+===============================================================================
+
+2) XSS when clicking Update:
+
+===============================================================================
+Violacion en la linea 153 del archivo /home/juanjo/python/webpy/xykra/web/xykra.py
+Valor manchado: /index.wiki
+-------------------------------------------------------------------------------
+                f = open (page, 'w')
+                f.write (inparms.page)
+                f.close()
+-->             web.redirect ('/%s' % (name))
+            elif inparms.action == 'Discard':
+                web.redirect ('/browse')
+
+===============================================================================
+
+What do you think about it? The module is working fine, I think. But I am actually lacking in using it with real apps. Yours is the first one I could make work.
+
+
+Keep in touch!

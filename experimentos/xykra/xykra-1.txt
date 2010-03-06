@@ -1,0 +1,50 @@
+Source: http://xykra.org/static/download/xykra-1.0.tar.gz
+
+Agregado:
+
+from dyntaint import *
+web.input = untrusted(web.input)
+web.redirect = ssink()(web.redirect)
+
+y mediante azúcar sintáctica:
+
+@ssink(XSS)
+def skeleton (title, file, body):
+
+@untrusted_args([1])
+def GET(self, name):
+
+Al utilizar la aplicación se encontraron las vulnerabilidades:
+
+1) XSS en la url:
+
+http://0.0.0.0:8080/edit/%3Cscript%3Ealert(%22hola%22)%3C/script%3EA
+
+===============================================================================
+Violacion en la linea 139 del archivo /home/juanjo/python/webpy/xykra/web/xykra.py
+Valor manchado: editing <script>alert("hola")</script>A
+-------------------------------------------------------------------------------
+            if os.path.exists (f) and os.path.isfile (f):
+                wiki = open (f).read()
+            doc = self.form(name, wiki)
+-->         return skeleton ('editing ' + name, name, doc)
+    
+        @untrusted_args([1])
+
+===============================================================================
+
+2) XSS al acer click en Update:
+
+===============================================================================
+Violacion en la linea 153 del archivo /home/juanjo/python/webpy/xykra/web/xykra.py
+Valor manchado: /index.wiki
+-------------------------------------------------------------------------------
+                f = open (page, 'w')
+                f.write (inparms.page)
+                f.close()
+-->             web.redirect ('/%s' % (name))
+            elif inparms.action == 'Discard':
+                web.redirect ('/browse')
+
+===============================================================================
+

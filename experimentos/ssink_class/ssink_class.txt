@@ -1,0 +1,33 @@
+Con ssink también se pueden marcar clases para evitar que sean instanciadas
+con variables manchadas.
+
+from dyntaint import *
+
+class Do(object):
+    
+    def __init__(self, a, b):
+        self.a = a
+        self.b = b
+        
+d1 = Do('no manchado')
+m = tainted('manchado')
+d2 = Do(m)
+Do = ssink()(Do)
+d3 = Do('no manchado')
+d4 = Do(m)
+
+El resultado de correr el anterior programa es:
+
+juanjo@fenix:~/python/dyntaint/experimentos/ssink_class$ python ejemplo.py 
+===============================================================================
+Violacion en la linea 14 del archivo ejemplo.py
+Valor manchado: manchado
+-------------------------------------------------------------------------------
+    d2 = Do(m, 2)
+    Do = ssink()(Do)
+    d3 = Do('no manchado', 1)
+--> d4 = Do(m, 2)
+    
+
+===============================================================================
+
