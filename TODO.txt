@@ -1,3 +1,5 @@
+OJO unicode no tiene __rmod__ / viendolo para que anden el ej web.py
+
 mancha1 + mancha2 --> el resultado debe tener las dos manchas
 Creo que ya esta...
 ==================================================

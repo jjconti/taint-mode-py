@@ -1,3 +1,25 @@
+'''
+Taint Mode for Python via a Library
+
+Copyright 2009 Juan José Conti
+Copyright 2010 Juan José Conti - Alejandro Russo
+
+This file is part of taintmode.py
+
+taitmode is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+taintmode.py is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with taintmode.py.  If not, see <http://www.gnu.org/licenses/>.
+
+'''
 from dyntaint import *
 import unittest
 
@@ -595,7 +617,40 @@ class TestUNICODE(unittest.TestCase):
         u = some_input(u'Asimov')
         #self.assertEqual(UNICODE, type(u))
         self.assertTrue(tainted(u + ' books'))
-                
+
+    def test_rmod_not_cleaned(self):
+        '''if s is tainted, a % s is also tainted.'''
+        
+        i = some_input(u"ar1")
+        self.assertFalse(saveDB2("%s" % i))
+
+    def test_rmod(self):
+        '''if s is tainted, a % s is also tainted.'''
+        
+        i = some_input(u"ar2")
+        self.assertTrue(saveDB2(cleanSQLI("%s" % i)))
+        
+class TestDict(unittest.TestCase):
+
+    def test_dict(self):
+        @untrusted
+        def retorna_dict():
+            return dict(a=1)
+            
+        d = retorna_dict()
+        self.assertTrue(tainted(d['a']))            
+
+    def test_dictkind(self):
+        class myDict(dict):
+            pass
+            
+        @untrusted
+        def retorna_dict():
+            return myDict(a=1)
+            
+        d = retorna_dict()
+        self.assertTrue(tainted(d['a'])) 
+        
 class TestCHR(unittest.TestCase):
     '''Test the chr built-it function. If the int-like argument is tainted,
      the returned string must be tainted too.'''

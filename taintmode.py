@@ -1,10 +1,31 @@
 '''
 Taint Mode for Python via a Library
+
+Copyright 2009 Juan José Conti
+Copyright 2010 Juan José Conti - Alejandro Russo
+
+This file is part of taintmode.py
+
+taitmode is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+taintmode.py is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with taintmode.py.  If not, see <http://www.gnu.org/licenses/>.
+
 '''
 import inspect
 import sys
 from itertools import chain
 
+
+__version__ = 'trunk-svn-2'
 
 __all__ = ['tainted', 'taint', 'untrusted', 'untrusted_args', 'ssink',
            'validator', 'cleaner', 'STR', 'INT', 'FLOAT', 'UNICODE', 'chr',
@@ -272,11 +293,14 @@ def taint_class(klass, methods):
     for name, attr in [(m, d[m]) for m in methods]:
         if inspect.ismethod(attr) or inspect.ismethoddescriptor(attr):
             setattr(tklass, name, propagate_method(attr))
-    # str has no __radd__ method, it does            
+    # str has no __radd__ method
     if '__add__' in methods and '__radd__' not in methods:   
         setattr(tklass, '__radd__', lambda self, other:
                                     tklass.__add__(tklass(other), self))
-    
+    # unicode __rmod__ returns NotImplemented
+    if klass == unicode:
+        setattr(tklass, '__rmod__', lambda self, other:
+                                    tklass.__mod__(tklass(other), self))    
     return tklass
 
 
