@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 '''
 Taint Mode for Python via a Library
 
@@ -119,8 +120,8 @@ def untrusted_args(nargs=[], nkwargs=[]):
     
     nargs is a list of positions. Positional arguments in that position will be 
     tainted for all the types of taint.
-	nkwargs is a list of strings. Keyword arguments for those keys will be
-	tainted for all the types of taint.
+    nkwargs is a list of strings. Keyword arguments for those keys will be
+    tainted for all the types of taint.
     '''
     def _untrusted_args(f):
         def inner(*args, **kwargs):
@@ -145,21 +146,29 @@ def untrusted(f):
         return taint_aware(r, TAGS)
     return inner
 
-def validator(v, nargs=[], nkwargs=[]):
+def validator(v, cond=True, nargs=[], nkwargs=[]):
     '''
     Mark a function or method as capable to validate its input.
     
     nargs is a list of positions. Positional arguments in that positions are
     the ones validated.
-	nkwargs is a list of strings. Keyword arguments for those keys are the ones
-	validated.taints set
-    If the function returns True, v will be removed from the the validated
+    nkwargs is a list of strings. Keyword arguments for those keys are the ones
+    validated.
+    If the function returns cond, v will be removed from the the validated
     inpunt.
+    
+    Example:
+    
+    for a function called invalid_mail, cond is liked to be False. If
+    invalid_mail returns False, then the mail IS valid and have no craft data
+    on it.
+    
+    for a function called valid_mail, cond is liked to be True.
     '''
     def _validator(f):
         def inner(*args, **kwargs):
             r = f(*args, **kwargs)
-            if r:
+            if r == cond:
                 tovalid = set([args[n] for n in nargs])
                 tovalid.update([kwargs[n] for n in nkwargs])
                 for a in tovalid:

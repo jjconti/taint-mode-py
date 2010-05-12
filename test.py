@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 '''
 Taint Mode for Python via a Library
 
@@ -624,11 +625,17 @@ class TestUNICODE(unittest.TestCase):
         i = some_input(u"ar1")
         self.assertFalse(saveDB2("%s" % i))
 
+    def test_rmod_not_cleaned_u(self):
+        '''if s is tainted, a % s is also tainted.'''
+        
+        i = some_input(u"ar1")
+        self.assertFalse(saveDB2(u"%s" % i))
+        
     def test_rmod(self):
         '''if s is tainted, a % s is also tainted.'''
         
         i = some_input(u"ar2")
-        self.assertTrue(saveDB2(cleanSQLI("%s" % i)))
+        self.assertTrue(saveDB2(cleanSQLI(u"%s" % i)))
         
 class TestDict(unittest.TestCase):
 
@@ -883,7 +890,7 @@ class CleanerDecorator(unittest.TestCase):
         #cleanOSI('1')
         self.assertFalse(OSI in i.taints)
 
-@validator(XSS, [0])
+@validator(XSS, nargs=[0])
 def is_good(a):
     return True
     
