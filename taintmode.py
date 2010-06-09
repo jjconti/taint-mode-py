@@ -32,17 +32,17 @@ __all__ = ['tainted', 'taint', 'untrusted', 'untrusted_args', 'ssink',
            'validator', 'cleaner', 'STR', 'INT', 'FLOAT', 'UNICODE', 'chr',
            'ord', 'len', 'ends_execution', 'XSS', 'SQLI', 'OSI', 'II']
 
-          
+
 ENDS = False
 RAISES = False
 KEYS  = [XSS, SQLI, OSI, II] = range(1, 5)
 TAGS = set(KEYS)
 
-           
+
 class TaintException(Exception):
     pass
 
-    
+
 def ends_execution(b=True):
     global ENDS
     ENDS = b
@@ -62,22 +62,22 @@ def propagate_func(original):
         r = taint_aware(r, t)
         return r
     return inner
-   
-len = propagate_func(len)     
+
+len = propagate_func(len)
 ord = propagate_func(ord)
 chr = propagate_func(chr)
-	
+
 # ------------------------- Auxiliaries functions -----------------------------
 
 def mapt(o, f, check=lambda o: type(o) in tclasses.keys()):
     if check(o):
         return f(o)
     elif isinstance(o, list):
-        return [mapt(x, f, check) for x in o] 
+        return [mapt(x, f, check) for x in o]
     elif isinstance(o, tuple):
         return tuple([mapt(x, f, check) for x in o])
     elif isinstance(o, set):
-        return  set([mapt(x, f, check) for x in o])         
+        return  set([mapt(x, f, check) for x in o])
     elif isinstance(o, dict):
         klass = type(o) # It's quite common for frameworks to extend dict
                         # with useful new methdos - i.e. web.py
@@ -103,9 +103,9 @@ def collect_tags(s, t):
 
 
 def update_tags(r, t):
-    mapt(r, lambda o: o.taints.update(t), lambda o: hasattr(o, 'taints'))    
+    mapt(r, lambda o: o.taints.update(t), lambda o: hasattr(o, 'taints'))
 
-  
+
 def taint_aware(r, ts=set()):
     r = mapt(r, tclass)
     update_tags(r, ts)
@@ -113,12 +113,12 @@ def taint_aware(r, ts=set()):
 
 
 # ------------------------- Decorators ----------------------------------------
-			
+
 def untrusted_args(nargs=[], nkwargs=[]):
     '''
     Mark a function or method that would recive untrusted values.
-    
-    nargs is a list of positions. Positional arguments in that position will be 
+
+    nargs is a list of positions. Positional arguments in that position will be
     tainted for all the types of taint.
     nkwargs is a list of strings. Keyword arguments for those keys will be
     tainted for all the types of taint.
@@ -134,13 +134,13 @@ def untrusted_args(nargs=[], nkwargs=[]):
             return r
         return inner
     return _untrusted_args
-    
+
 def untrusted(f):
     '''
     Mark a function or method as untrusted.
-    
+
     The returned value will be tainted for all the types of taint.
-    '''     
+    '''
     def inner(*args, **kwargs):
         r = f(*args, **kwargs)
         return taint_aware(r, TAGS)
@@ -149,20 +149,20 @@ def untrusted(f):
 def validator(v, cond=True, nargs=[], nkwargs=[]):
     '''
     Mark a function or method as capable to validate its input.
-    
+
     nargs is a list of positions. Positional arguments in that positions are
     the ones validated.
     nkwargs is a list of strings. Keyword arguments for those keys are the ones
     validated.
     If the function returns cond, v will be removed from the the validated
     inpunt.
-    
+
     Example:
-    
+
     for a function called invalid_mail, cond is liked to be False. If
     invalid_mail returns False, then the mail IS valid and have no craft data
     on it.
-    
+
     for a function called valid_mail, cond is liked to be True.
     '''
     def _validator(f):
@@ -176,15 +176,15 @@ def validator(v, cond=True, nargs=[], nkwargs=[]):
             return r
         return inner
     return _validator
-    
-    
+
+
 def cleaner(v):
     '''
     Mark a function or methos as capable to clean its input.
-    
+
     v is removed from the returned value.
     '''
-    def _cleaner(f):    
+    def _cleaner(f):
         def inner(*args, **kwargs):
             r = f(*args, **kwargs)
             remove_tags(r, v)
@@ -201,7 +201,7 @@ def reached(t, v=None):
     filename = inspect.getfile(frame)
     lno = frame.f_lineno
     print "=" * 79
-    print "Violation in line %d from file %s" % (lno, filename) 
+    print "Violation in line %d from file %s" % (lno, filename)
     # Localize this message
     print "Tainted value: %s" % t
     print '-' * 79
@@ -210,13 +210,13 @@ def reached(t, v=None):
     lno = lno - 1
     lineas[lno] = '--> ' + lineas[lno][4:]
     lineas = lineas[lno - 3: lno + 3]
-    print "".join(lineas) 
+    print "".join(lineas)
     print "=" * 79
-        
+
 def ssink(v=None, reached=reached):
     '''
     Mark a function or method as sensitive to tainted data.
-    
+
     If it is called with a value with the v tag
     (or any tag if v is None),
     it's not executed and reached is executed instead.
@@ -231,7 +231,7 @@ def ssink(v=None, reached=reached):
         else:
             reached(a)
             return f(*args, **kwargs)
-                        
+
     def _ssink(f):
         def inner(*args, **kwargs):
             allargs = chain(args, kwargs.values())
@@ -250,16 +250,16 @@ def ssink(v=None, reached=reached):
             return f(*args, **kwargs)
         return inner
     return _ssink
-    
+
 def tainted(o, v=None):
     '''
     Tells if a value o, ant tclass instance, is tainted for the given vul.
-    
+
     If v is None, test if o.taints is not empty.
     '''
     if not hasattr(o, 'taints'):
         return False
-    if v:
+    if v:   #OJO CON EL 0
         return v in o.taints
     if o.taints:
         return True
@@ -270,7 +270,7 @@ def taint(o, v=None):
     Helper function for taint variables.
     '''
     ts = set()
-    if v:
+    if v is not None:
         ts.add(v)
     else:
         ts.update(TAGS)
@@ -297,19 +297,42 @@ def taint_class(klass, methods):
         def __new__(cls, *args, **kwargs):
             self = super(tklass, cls).__new__(cls, *args, **kwargs)
             self.taints = set()
+
+            # if any of the arguments is tainted, taint the object aswell
+
+            for a in args:      # this CHUNK of code appears at least 3 times, refactor later
+                collect_tags(a, self.taints)
+            for v in kwargs.values():
+                collect_tags(v, self.taints)
+
             return self
+
+        # support for assigment and taint change
+
+        def __setattr__(self, name, value):
+            if name in self.__dict__:
+                for t in self.__dict__[name].taints:
+                    # if other field had it, keep it
+                    taintsets = [v.taints for k,v in self.__dict__.items() if not callable(v) and tainted(v) and k != name]
+                    if not any([t in x for x in taintsets]):
+                        self.taints.remove(t)
+
+            self.__dict__[name] = value
+            if tainted(value):
+                self.taints.update(value.taints)
+
     d = klass.__dict__
     for name, attr in [(m, d[m]) for m in methods]:
         if inspect.ismethod(attr) or inspect.ismethoddescriptor(attr):
             setattr(tklass, name, propagate_method(attr))
     # str has no __radd__ method
-    if '__add__' in methods and '__radd__' not in methods:   
+    if '__add__' in methods and '__radd__' not in methods:
         setattr(tklass, '__radd__', lambda self, other:
                                     tklass.__add__(tklass(other), self))
     # unicode __rmod__ returns NotImplemented
     if klass == unicode:
         setattr(tklass, '__rmod__', lambda self, other:
-                                    tklass.__mod__(tklass(other), self))    
+                                    tklass.__mod__(tklass(other), self))
     return tklass
 
 
@@ -318,12 +341,12 @@ dont_override = set(['__repr__', '__cmp__', '__getattribute__', '__new__',
                      '__str__', '__int__', '__float__', '__unicode__'])
 
 
-# ------- Taint-aware classes for strings, integers, floats, and unicode ------ 
+# ------- Taint-aware classes for strings, integers, floats, and unicode ------
 
 def attributes(klass):
     a = set(klass.__dict__.keys())
     return a - dont_override
-    
+
 str_methods = attributes(str)
 unicode_methods = attributes(unicode)
 int_methods = attributes(int)
@@ -342,4 +365,4 @@ def tclass(o):
     if klass in tclasses.keys():
         return tclasses[klass](o)
     else:
-        raise KeyError        
+        raise KeyError

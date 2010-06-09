@@ -719,13 +719,13 @@ class TestTaints(unittest.TestCase):
 
 class TestTainted(unittest.TestCase):
 
-    def test_taint(self):
+    def test_tainted(self):
         x = 'taint'
         self.assertFalse(tainted(x))
         i = some_input(x)
         self.assertTrue(tainted(i))
 
-    def test_taint_vul(self):
+    def test_tainted_vul(self):
         x = 'taint_vul'
         self.assertFalse(tainted(x))
         i = some_input(x)
@@ -735,13 +735,20 @@ class TestTainted(unittest.TestCase):
         self.assertTrue(tainted(i, v=XSS))
         self.assertFalse(tainted(i, v=SQLI))
 
-    def test_taint_vul2(self):
+    def test_tainted_vul2(self):
         '''If the givven vul argument is not a valid KEY,
         return False.'''
         x = 'taint_vul2'
         self.assertFalse(tainted(x))
         i = some_input(x)
         self.assertFalse(tainted(i, v=100))
+
+    def test_taint_0(self):
+        ''' There was a bug in rev 98 related to 0 as a taint id
+        and its value of truth.
+        '''
+        a = taint('just one taint', 0)
+        self.assertEqual(a.taints, set([0]))
 
 class TestSink(unittest.TestCase):
 
