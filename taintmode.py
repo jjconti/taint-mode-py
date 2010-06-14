@@ -259,7 +259,7 @@ def tainted(o, v=None):
     '''
     if not hasattr(o, 'taints'):
         return False
-    if v:   #OJO CON EL 0
+    if v is not None:   #OJO CON EL 0
         return v in o.taints
     if o.taints:
         return True
@@ -292,10 +292,12 @@ def propagate_method(method):
     return inner
 
 
-def taint_class(klass, methods):
+def taint_class(klass, methods=None):
+    if not methods:
+        methods = attributes(klass)
     class tklass(klass):
         def __new__(cls, *args, **kwargs):
-            self = super(tklass, cls).__new__(cls, *args, **kwargs)
+            self = super(tklass, cls).__new__(cls, *args, **kwargs) #justificar analizar pq no init
             self.taints = set()
 
             # if any of the arguments is tainted, taint the object aswell
@@ -307,19 +309,20 @@ def taint_class(klass, methods):
 
             return self
 
-        # support for assigment and taint change
+        # support for assigment and taint change in classobj
 
         def __setattr__(self, name, value):
-            if name in self.__dict__:
+            if self.__dict__ and name in self.__dict__ and tainted(self.__dict__[name]):
                 for t in self.__dict__[name].taints:
                     # if other field had it, keep it
                     taintsets = [v.taints for k,v in self.__dict__.items() if not callable(v) and tainted(v) and k != name]
                     if not any([t in x for x in taintsets]):
                         self.taints.remove(t)
 
-            self.__dict__[name] = value
-            if tainted(value):
-                self.taints.update(value.taints)
+            if self.__dict__ is not None:
+                self.__dict__[name] = value
+                if tainted(value):
+                    self.taints.update(value.taints)
 
     d = klass.__dict__
     for name, attr in [(m, d[m]) for m in methods]:
