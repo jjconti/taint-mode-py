@@ -1,0 +1,26 @@
+$def with (items)
+
+<form action="add" method="post">
+<center>
+<div>
+<input type="text" name="user", value="your name"/>
+</div>
+<div>
+<textarea name="meal" rows="10" cols="30">Enter your prefear meal, please.</textarea>
+</div>
+<div>
+<input type="submit" value="Submit!" />
+</div>
+</center>
+</form>
+
+
+$for item in items:
+    $:render.item(item)
+
+
+<form action="clean" method="post">
+<center>
+<input type="submit" value="Clean!" />
+</center>
+</form>

@@ -1,0 +1,77 @@
+$def with (content)
+<html>
+<head>
+<title>Suggestions for lunch</title>
+<style type="text/css">
+
+body, html { 
+  font-family: sans-serif;
+  font-size: large;
+  margin: 0;
+  padding: 0;
+  background-color: #EEE;
+ }
+
+#wrap { 
+  background-color: #FFF;
+  color: #444;
+  width: 60%;
+  margin: 0 auto;
+  padding: 30px;
+  margin-top: 5px;
+ }
+
+#header {
+  color: #FFF;
+  background-color: #444;
+  text-align: center;
+  padding: 10px 0;
+}
+
+a { 
+  color: #AC0;
+  text-decoration: none;
+  padding: 3px 5px;
+ }
+
+a:hover { 
+  color: #CF0;
+  background-color: #444; 
+ }
+
+.sec {
+  padding-top: 20px;
+  padding-bottom: 30px;
+  border-bottom: 3px solid #EEE;
+ }
+
+.sec ul li { 
+  padding: 3px 0;
+}
+
+ul.unstyled {
+  padding-left: 0;
+}
+
+ul.unstyled li {
+  list-style: none;
+}
+
+</style>
+</head>
+
+<body>
+<div id="wrap">
+
+<div id="header">
+<h1><a href="/">Suggestions for lunch</a></h1>
+</div>
+
+<div class="sec">
+$:content
+</div>
+
+</div>
+</body>
+</html>
+
