@@ -4,11 +4,11 @@ from view import render
 import os
 from datetime import datetime
 
-from taintmode import *
-web.input = untrusted(web.input)
-os.system = ssink(OSI)(os.system)
-import taintmode
-taintmode.ends_execution()
+#from taintmode import *
+#web.input = untrusted(web.input)
+#os.system = ssink(OSI)(os.system)
+#import taintmode
+#taintmode.ends_execution()
 
 urls = (
     '/', 'index',

@@ -1,0 +1,112 @@
+The taint mode library for Python described at [1] works for built-in types
+propagating tags while performing operations such as contactenation:
+
+>>> s = taint('a')
+>>> tainted(s + 'non taint')
+True
+
+or method calls such as .upper:
+
+>>> tainted(s.upper())
+True
+
+but says nothing about the semantic of tainted objects. Of course, 'a', instance
+of str, is an object, but the misssing point is what happens with user defined
+classes and how taint propagation should behaive in relation with the object's
+fields modification.
+
+The taint_class decorator can be applyied to user defined classes but it's not
+much what we win. The concept of field allow a finer granularity for taint
+propagation.
+
+The modifications done in taint_class allows it to be used to decorate user
+defined classes archiving the following behaivour:
+
+- every instance will have a taints attribute to keep track of its tags.
+- whenever a field is added, deleted or its value replaces, instance.taints
+will always contain the set of tags of its fields
+
+Example:
+
+    a = taint('value1', 0)
+    b = taint('value2', 1)
+    c = taint('value3', 2)
+
+    @taint_class
+    class Dummy(object):
+
+        def __init__(self, a, b, c):
+            self.a = a
+            self.other = b
+            self.ccc = 3 * c
+
+        def get(self):
+            return self.a + self.ccc
+
+        def get_with_arg(self, a):
+            return self.a + self.ccc + a
+
+        def set(self, x):
+            self.a = x
+
+* A tainted object must have a taint field and must be tainted.
+
+d = Dummy(a, b, c)
+hasattr(d, 'taints') == True
+tainted(d) == True
+
+* The taints in a tainted object are those of its initialization arguments.
+At least at the begginig
+
+d = Dummy(a, a, a)
+d.taints == set([0])
+
+* If a method recive a tainted argument, the result should have the object
+taints + the argument taints
+
+d = Dummy(a, a, a)
+r = d.get_with_arg(b)
+tainted(r) == True
+r.taints == set([0, 1])
+
+* If a field is set, the new value taint should be consider. If it wasn't
+in the original object, it must be added and if the replaced value have a
+taint no more present, that taint should be removed from the object.
+
+d = Dummy(a, c, c)
+d.set(b)
+d.taints == set([1, 2])
+
+* If a a field is set, the new value taint should be consider. If it wasn't in
+the original object, it must be and if the replaced value have a taint no more
+present, that taint should be removed from the object.
+But if the taint was present in another field, it should be conseve.
+
+d = Dummy(a ,a, a)
+d.set(b)
+d.taints == set([0, 1])
+
+* If the replaced field is not tainted, don't crash.
+  
+d = Dummy(a, c, c)
+d.set("look ma, no taints")
+d.set("look ma, no taints")
+d.taints == set([2])
+
+
+
+-------------------------------------------------------------------------------
+Questions about taint objects
+
+Should tainted objects have a taints field? Or instead of this, each time you ask for tainted(o), fields must be review.
+
+.tainted
+
+What happens with setters? If you set a field, and that field had taint 0 but the new value has taint 1 and there are no other fields
+in the object, then the taint attribute should be only 1, with 0 removed. Right?
+
+
+
+
+it seems that the taints field in been set twice....
+que pasa con clases heredadas, estamos pisando solo los metodos de las clases base

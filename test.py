@@ -623,7 +623,7 @@ class TestUNICODE(unittest.TestCase):
         '''if s is tainted, a % s is also tainted.'''
 
         i = some_input(u"ar1")
-        self.assertFalse(saveDB2("%s" % i))
+        self.assertFalse(saveDB2("%s" % i)) # SE LLAMA AL FORMAT DE str :(
 
     def test_rmod_not_cleaned_u(self):
         '''if s is tainted, a % s is also tainted.'''
