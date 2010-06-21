@@ -39,6 +39,7 @@ if __name__ == '__main__':
     
     RewriteMod().visit(a)
 
+    "http://dev.pocoo.org/hg/sandbox/file/868ea20c2c1d/ast/"
     import codegen
     print codegen.to_source(a)
 
