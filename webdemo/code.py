@@ -4,11 +4,14 @@ from view import render
 import os
 from datetime import datetime
 
-#from taintmode import *
-#web.input = untrusted(web.input)
-#os.system = ssink(OSI)(os.system)
-#import taintmode
-#taintmode.ends_execution()
+from taintmode import *
+web.input = untrusted(web.input)
+os.system = ssink(OSI)(os.system)
+import taintmode
+taintmode.ends_execution()
+
+from cleaners import clean_osi
+clean_osi = cleaner(OSI)(clean_osi)
 
 urls = (
     '/', 'index',
@@ -29,7 +32,7 @@ class clean:
 class add:
     def POST(self):
         user = web.input().user
-        meal = web.input().meal
+        meal = clean_osi(web.input().meal)
         # save it to the file of the day
         dayfile = datetime.today().strftime('%Y-%m-%d') + '.txt'
         os.system("echo " + meal + " >> " + dayfile)

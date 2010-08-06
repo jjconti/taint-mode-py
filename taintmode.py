@@ -122,6 +122,21 @@ def untrusted_args(nargs=[], nkwargs=[]):
     tainted for all the types of taint.
     nkwargs is a list of strings. Keyword arguments for those keys will be
     tainted for all the types of taint.
+
+    >>> @untrusted_args([0])
+    ... def noconfialbe(algo):
+    ...     return algo
+    >>> type(noconfialbe("string"))
+    <class '__main__.tklass'>
+
+    adsasd
+    asd
+    adsasdad
+    a
+    >>> a = noconfialbe("alg")
+    >>> a.taints
+    set([1, 2, 3, 4])
+
     '''
     def _untrusted_args(f):
         def inner(*args, **kwargs):
@@ -369,3 +384,7 @@ def tclass(o):
         return tclasses[klass](o)
     else:
         raise KeyError
+
+if __name__ == "__main__":
+        import doctest
+        doctest.testmod()
