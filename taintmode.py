@@ -7,7 +7,7 @@ Copyright 2010 Juan José Conti - Alejandro Russo
 
 This file is part of taintmode.py
 
-taitmode is free software: you can redistribute it and/or modify
+taintmode is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
@@ -57,9 +57,8 @@ def propagate_func(original):
         for v in kwargs.values():
             collect_tags(v, t)
         r  = original(*args, **kwargs)
-        if t == set([]):
-            return r
-        r = taint_aware(r, t)
+        if t:
+            r = taint_aware(r, t)
         return r
     return inner
 
@@ -69,19 +68,19 @@ chr = propagate_func(chr)
 
 # ------------------------- Auxiliaries functions -----------------------------
 
-def mapt(o, f, check=lambda o: type(o) in tclasses.keys()):
+def mapt(o, f, check=lambda o: type(o) in tclasses):
     if check(o):
         return f(o)
     elif isinstance(o, list):
         return [mapt(x, f, check) for x in o]
     elif isinstance(o, tuple):
-        return tuple([mapt(x, f, check) for x in o])
+        return tuple(mapt(x, f, check) for x in o)
     elif isinstance(o, set):
-        return  set([mapt(x, f, check) for x in o])
+        return  set(mapt(x, f, check) for x in o)
     elif isinstance(o, dict):
         klass = type(o) # It's quite common for frameworks to extend dict
                         # with useful new methdos - i.e. web.py
-        return klass([(k, mapt(v, f, check)) for k, v in o.items()])
+        return klass((k, mapt(v, f, check)) for k, v in o.iteritems())
     else:
         return o
 
@@ -140,7 +139,7 @@ def untrusted_args(nargs=[], nkwargs=[]):
     '''
     def _untrusted_args(f):
         def inner(*args, **kwargs):
-            args = list(args)   # args is a tuple
+            args = list(args)   # args is a tuple - add a test
             for n in nargs:
                 args[n] = mapt(args[n], taint)
             for n in nkwargs:
@@ -184,8 +183,8 @@ def validator(v, cond=True, nargs=[], nkwargs=[]):
         def inner(*args, **kwargs):
             r = f(*args, **kwargs)
             if r == cond:
-                tovalid = set([args[n] for n in nargs])
-                tovalid.update([kwargs[n] for n in nkwargs])
+                tovalid = set(args[n] for n in nargs)
+                tovalid.update(kwargs[n] for n in nkwargs)
                 for a in tovalid:
                     remove_tags(a, v)
             return r
@@ -240,7 +239,7 @@ def ssink(v=None, reached=reached):
         if ENDS:
             if RAISES:
                 reached(a)
-                raise TaintException
+                raise TaintException()
             else:
                 return reached(a)
         else:
@@ -249,7 +248,7 @@ def ssink(v=None, reached=reached):
 
     def _ssink(f):
         def inner(*args, **kwargs):
-            allargs = chain(args, kwargs.values())
+            allargs = chain(args, kwargs.itervalues())
             if v is None:   # sensitive to ALL
                 for a in allargs:
                     t = set()
@@ -268,17 +267,15 @@ def ssink(v=None, reached=reached):
 
 def tainted(o, v=None):
     '''
-    Tells if a value o, ant tclass instance, is tainted for the given vul.
+    Tells if a value o, a tclass instance, is tainted for the given vulnerability.
 
-    If v is None, test if o.taints is not empty.
+    If v is not provided, checks for all taints.
     '''
     if not hasattr(o, 'taints'):
         return False
     if v is not None:   #OJO CON EL 0
         return v in o.taints
-    if o.taints:
-        return True
-    return False
+    return bool(o.taints)
 
 def taint(o, v=None):
     '''
