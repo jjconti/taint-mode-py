@@ -119,23 +119,61 @@ def untrusted_args(nargs=[], nkwargs=[]):
 
     nargs is a list of positions. Positional arguments in that position will be
     tainted for all the types of taint.
+
     nkwargs is a list of strings. Keyword arguments for those keys will be
     tainted for all the types of taint.
 
-    >>> @untrusted_args([0])
-    ... def noconfialbe(algo):
-    ...     return algo
-    >>> type(noconfialbe("string"))
-    <class '__main__.tklass'>
+    Some frameworks works as follow: they ask the programmer to write certain
+    function or method in such a way that then the framework itself use it to
+    pass to the program values received from the outside. Twisted, the framework
+    for building network applications, gives us an accurate example when you
+    extend the LineOnlyReceiver class:
 
-    adsasd
-    asd
-    adsasdad
-    a
-    >>> a = noconfialbe("alg")
-    >>> a.taints
-    set([1, 2, 3, 4])
+    .. code-block:: python
 
+      class MyProtocol(LineOnlyReceiver):
+
+        def lineReceived(self, line):
+            self.doSomething(line)  # line is a tainted value
+
+    It's complicated or even impossible use the untrusted decorator in this kind
+    of situations. Instead of it, you should use the untrusted_args decorator,
+    which receives as an optional argument a list of non-trusted arguments positions
+    and a list of keywords. The line parameter in the example can be marked as
+    untrusted in this way:
+
+    .. code-block:: python
+
+        class MyProtocol(LineOnlyReceiver):
+
+        @untrusted_args([1])
+        def lineReceived(self, line):
+            self.doSomething(line)
+
+    Example
+    =======
+    >>> import taintmode
+    >>> from taintmode import *
+
+    >>> @ssink(OSI)
+    ... def exec_comand(cm):
+    ...     print "executing ", cm
+    ...
+    >>> @untrusted_args([1])
+    ... def rutine(auxvalue, command):
+    ...     exec_comand(command)
+    ...     print auxvalue
+    ...
+    >>> rutine(42,"rm -r /")
+    ===============================================================================
+    Violation in line 3 from file <doctest __main__.untrusted_args[3]>
+    Tainted value: rm -r /
+    -------------------------------------------------------------------------------
+            print auxvalue
+    <BLANKLINE>
+    ===============================================================================
+    executing  rm -r /
+    42
     '''
     def _untrusted_args(f):
         def inner(*args, **kwargs):
@@ -154,6 +192,30 @@ def untrusted(f):
     Mark a function or method as untrusted.
 
     The returned value will be tainted for all the types of taint.
+
+    Examples
+    ========
+
+    If you have access to the function or method definition, for example if it's part
+    of your code-base the decorator can be applied using Python's syntactic sugar:
+
+    >>> @untrusted
+    ... def from_outside():
+    ...     return 'a string' #this value is untrusted
+    ...
+    >>> value = from_outside()
+    >>> value
+    'a string'
+    >>> type(value)
+    <class '__main__.tklass'>
+    >>> tainted(value)
+    True
+
+    While using third-party modules, we still can apply the decorator. The next
+    example is from a program writed using the web.py framework:
+
+    >>> import web
+    >>> web.input = untrusted(web.input)
     '''
     def inner(*args, **kwargs):
         r = f(*args, **kwargs)
@@ -196,7 +258,39 @@ def cleaner(v):
     '''
     Mark a function or methos as capable to clean its input.
 
-    v is removed from the returned value.
+    :param v: taint removed from the returned value.
+
+    Example
+    =======
+
+    >>> @cleaner(SQLI) #this make the following function capable to clean objets from SQLI taints
+    ... def clean_string(stri):
+    ...     return stri.split(' ')[0]
+    ...
+    >>> @untrusted #simulates an utrusted value
+    ... def get_id_employee():
+    ...     return "21 or 1=1"
+    ...
+
+    >>> @ssink(SQLI) #simulate a rutine that will execute an sql query
+    ... def erase_employee(id):
+    ...     print "this value this value is placed in the WHERE clause of a sql delete statment:" , id
+    >>> i=get_id_employee()
+    >>> erase_employee(i)
+    ===============================================================================
+    Violation in line 1 from file <doctest __main__.cleaner[4]>
+    Tainted value: 21 or 1=1
+    -------------------------------------------------------------------------------
+    --> erase_employee(i)
+    <BLANKLINE>
+    ===============================================================================
+    this value this value is placed in the WHERE clause of a sql delete statment: 21 or 1=1
+
+    >>> i = clean_string(i) # the untrusted value is clean now
+    >>> i
+    '21'
+    >>> erase_employee(i)
+    this value this value is placed in the WHERE clause of a sql delete statment: 21
     '''
     def _cleaner(f):
         def inner(*args, **kwargs):
@@ -210,6 +304,13 @@ def reached(t, v=None):
     '''
     Execute if a tainted value reaches a sensitive sink
     for the vulnerability v.
+
+    If the module-level variable ENDS is set to True, then the sink is not
+    executed and the reached function is executed instead. If ENDS is set to False,
+    the reached function is executed but the program continues its flow.
+
+    The provided de facto implementation alerts that the violation happened and
+    information to find the error.
     '''
     frame = sys._getframe(3)
     filename = inspect.getfile(frame)
@@ -234,6 +335,36 @@ def ssink(v=None, reached=reached):
     If it is called with a value with the v tag
     (or any tag if v is None),
     it's not executed and reached is executed instead.
+
+    These sinks are sensitive to a kind of vulnerability, and must be specified when
+    the decorator is used
+
+    Examples
+    ========
+
+    The web.py framework offers SQL Injection sensitive sink examples:
+
+    >>> import web
+    >>> db = web.database(dbn="sqlite", db="DB_NAME")
+    >>> db.delete=ssink(SQLI)(db.delete)
+    >>> db.select = ssink(SQLI)(db.select)
+    >>> db.insert = ssink(SQLI)(db.insert)
+
+    Like the rest of decorators, if the sensitive sink is defined in our code, we can
+    use syntactic sugar:
+
+    @ssink(OSI):
+    def list_dir(input)
+        ...
+
+    The decorator can also be used without specifying a vulnerability. In this case,
+    the sink is marked as sensitive to every kind of vulnerability, although this is not
+    a very common use case:
+
+    @ssink():
+    def very_sensitive(input):
+       ...
+
     '''
     def _solve(a, f, args, kwargs):
         if ENDS:
@@ -270,6 +401,17 @@ def tainted(o, v=None):
     Tells if a value o, a tclass instance, is tainted for the given vulnerability.
 
     If v is not provided, checks for all taints.
+
+    Example
+    =======
+
+    >>> @untrusted
+    ... def example():
+    ...     return "astring"
+    ...
+    >>> a=example()
+    >>> tainted(a) # "a" contains a tainted value
+    True
     '''
     if not hasattr(o, 'taints'):
         return False
