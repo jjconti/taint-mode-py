@@ -398,30 +398,56 @@ def ssink(v=None, reached=reached):
 
 def tainted(o, v=None):
     '''
-    Tells if a value o, a tclass instance, is tainted for the given vulnerability.
+    Tells if a value o, a tclass instance, is tainted for the given
+    vulnerability v.
 
-    If v is not provided, checks for all taints.
+    If v is not provided, checks for all taints. If the value is tainted
+    with at least one vulnerability, returns True.
 
     Example
     =======
 
-    >>> @untrusted
-    ... def example():
-    ...     return "astring"
-    ...
-    >>> a=example()
-    >>> tainted(a) # "a" contains a tainted value
+    >>> t1 = taint(42, OSI)
+    >>> t2 = taint(42)
+    >>> tainted(t1)
+    True
+    >>> tainted(t1, OSI)
+    True
+    >>> tainted(t1, II)
+    False
+    >>> tainted(t2, II)
+    True
+    >>> tainted(t2, SQLI)
+    True
+    >>> tainted(t2)
     True
     '''
     if not hasattr(o, 'taints'):
         return False
-    if v is not None:   #OJO CON EL 0
+    if v is not None:
         return v in o.taints
     return bool(o.taints)
 
 def taint(o, v=None):
     '''
-    Helper function for taint variables.
+    Helper function for taint the value o with the vulnerability v.
+
+    If v is not provided, taint with all types of taints.
+
+    Example
+    =======
+
+    >>> t = taint(42)
+    >>> t.taints
+    set([1, 2, 3, 4])
+    >>> tainted(t, XSS)
+    True
+    >>> tainted(t, OSI)
+    True
+    >>> tainted(t, SQLI)
+    True
+    >>> tainted(t, II)
+    True
     '''
     ts = set()
     if v is not None:
