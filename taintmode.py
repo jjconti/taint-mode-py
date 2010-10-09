@@ -434,8 +434,8 @@ def taint(o, v=None):
 
     If v is not provided, taint with all types of taints.
 
-    Example
-    =======
+    Example: tainting with all vulnerabilities
+    ==========================================
 
     >>> t = taint(42)
     >>> t.taints
@@ -448,6 +448,20 @@ def taint(o, v=None):
     True
     >>> tainted(t, II)
     True
+
+    Example: tainting with Interpreter Injection vulnerability
+    ==========================================================
+
+    >>> taint(42, II)
+    42
+    >>> t = taint(42, II)
+    >>> t.taints
+    set([4])
+    >>> tainted(t, II)
+    True
+    >>> tainted(t, OSI)
+    False
+
     '''
     ts = set()
     if v is not None:
